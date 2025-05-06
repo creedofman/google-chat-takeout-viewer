@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Google Chat Takeout Viewer</title>
+  <style>
+    /* Base styles */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #1a73e8;
+      margin-top: 0;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    /* File input styles */
+    .file-input-container {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px dashed #ccc;
+    }
+    #zip-file {
+      display: none;
+    }
+    .file-input-label {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #1a73e8;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .file-input-label:hover {
+      background-color: #0d62c9;
+    }
+    .file-input-info {
+      margin-top: 10px;
+      color: #666;
+    }
+    
+    /* Conversation list styles */
+    .sidebar {
+      width: 30%;
+      float: left;
+      padding-right: 20px;
+      box-sizing: border-box;
+    }
+    .main-content {
+      width: 70%;
+      float: right;
+      box-sizing: border-box;
+    }
+    .convo-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 500px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 5px;
+    }
+    .convo-list li {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .convo-list li:hover {
+      background-color: #f0f7ff;
+    }
+    .convo-list li.active {
+      background-color: #e8f0fe;
+      font-weight: bold;
+      color: #1a73e8;
+    }
+    
+    /* Message container styles */
+    .message-container {
+      height: 500px;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 5px;
+      background-color: #f8f9fa;
+    }
+    
+    /* Message styles */
+    .msg {
+      margin-bottom: 15px;
+      clear: both;
+      max-width: 80%;
+    }
+    .msg.sender-1 {
+      float: left;
+    }
+    .msg.sender-2 {
+      float: right;
+    }
+    .msg-bubble {
+      padding: 10px 15px;
+      border-radius: 18px;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .msg.sender-1 .msg-bubble {
+      background-color: #e1f5fe;
+      border-bottom-left-radius: 5px;
+    }
+    .msg.sender-2 .msg-bubble {
+      background-color: #e8f5e9;
+      border-bottom-right-radius: 5px;
+    }
+    .msg-sender {
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+    .msg-time {
+      font-size: 0.75em;
+      color: #666;
+      margin-top: 5px;
+      text-align: right;
+    }
+    
+    /* Media styles */
+    .media-container {
+      margin-top: 10px;
+    }
+    .media-item {
+      margin: 5px 0;
+    }
+    .media-item img {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .media-item img:hover {
+      opacity: 0.9;
+    }
+    .media-download {
+      display: inline-block;
+      margin-top: 5px;
+      font-size: 0.8em;
+      color: #1a73e8;
+      text-decoration: none;
+    }
+    .media-download:hover {
+      text-decoration: underline;
+    }
+    
+    /* Modal styles for image preview */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 100;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.8);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .modal.show {
+      display: block;
+      opacity: 1;
+    }
+    .modal-content {
+      display: block;
+      margin: 60px auto;
+      max-width: 90%;
+      max-height: 80%;
+    }
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 30px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    
+    /* Date separator */
+    .date-separator {
+      text-align: center;
+      margin: 20px 0;
+      clear: both;
+      overflow: hidden;
+      position: relative;
+    }
+    .date-separator-text {
+      display: inline-block;
+      padding: 0 10px;
+      background-color: #f8f9fa;
+      position: relative;
+      z-index: 1;
+      font-size: 0.85em;
+      color: #666;
+    }
+    .date-separator:before {
+      content: "";
+      position: absolute;
+      height: 1px;
+      background-color: #ddd;
+      width: 100%;
+      top: 50%;
+      left: 0;
+    }
+    
+    /* Clearfix */
+    .clearfix::after {
+      content: "";
+      clear: both;
+      display: table;
+    }
+    
+    /* Loading indicator */
+    .loading {
+      text-align: center;
+      padding: 20px;
+      display: none;
+    }
+    .loading:after {
+      content: "Processing...";
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Google Chat Takeout Viewer</h1>
+    
+    <div class="file-input-container">
+      <label for="zip-file" class="file-input-label">Select Takeout ZIP File</label>
+      <input type="file" id="zip-file" class="file-input" accept=".zip" />
+      <div class="file-input-info">Select your Google Chat export ZIP file to view conversations</div>
+    </div>
+    
+    <div class="loading" id="loading-indicator"></div>
+    
+    <div class="clearfix">
+      <div class="sidebar">
+        <h3>Conversations</h3>
+        <ul id="conversations" class="convo-list"></ul>
+      </div>
+      
+      <div class="main-content">
+        <div id="messages" class="message-container"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="image-modal" class="modal">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modal-img">
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2.7.29/dist/zip.min.js"></script>
+  <script>
+    // Global variables
+    let conversations = {};
+    let mediaMap = {};
+    let topFolder = '';
+    let fileBlobs = {};
+    let currentConversation = null;
+    let senderColors = {};
+    let senderOrder = [];
+    
+    // Elements
+    const convoList = document.getElementById('conversations');
+    const messagesDiv = document.getElementById('messages');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const modal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalClose = document.querySelector('.modal-close');
+    
+    // Helper functions
+    function parseMediaTimestamp(filename) {
+      const match = filename.match(/_(\d{8})_(\d{6})_/);
+      if (!match) return null;
+      const dateStr = match[1] + match[2];
+      return new Date(dateStr.slice(0,4)+'-'+dateStr.slice(4,6)+'-'+dateStr.slice(6,8)+'T'+dateStr.slice(8,10)+':'+dateStr.slice(10,12)+':'+dateStr.slice(12,14));
+    }
+
+    function getMediaType(filename) {
+      if (/\.(jpe?g|png|gif|bmp|webp)$/i.test(filename)) {
+        return 'image';
+      } else if (/\.(mp4|webm|mov|avi)$/i.test(filename)) {
+        return 'video';
+      } else if (/\.(mp3|wav|ogg)$/i.test(filename)) {
+        return 'audio';
+      }
+      return 'file';
+    }
+    
+    function formatDate(date) {
+      if (!(date instanceof Date) || isNaN(date)) return '';
+      
+      const now = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const isToday = date.toDateString() === now.toDateString();
+      const isYesterday = date.toDateString() === yesterday.toDateString();
+      
+      if (isToday) {
+        return 'Today';
+      } else if (isYesterday) {
+        return 'Yesterday';
+      } else {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        return date.toLocaleDateString(undefined, options);
+      }
+    }
+    
+    function getSenderClass(sender) {
+      if (!senderOrder.includes(sender)) {
+        senderOrder.push(sender);
+      }
+      
+      const index = senderOrder.indexOf(sender);
+      return `sender-${(index % 2) + 1}`;
+    }
+    
+    // File processing
+    document.getElementById('zip-file').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      // Reset data
+      conversations = {};
+      mediaMap = {};
+      fileBlobs = {};
+      senderOrder = [];
+      convoList.innerHTML = '';
+      messagesDiv.innerHTML = '';
+      loadingIndicator.style.display = 'block';
+      
+      try {
+        const reader = new zip.ZipReader(new zip.BlobReader(file));
+        const entries = await reader.getEntries();
+        
+        // First, identify the top folder structure
+        for (const entry of entries) {
+          if (!topFolder && entry.filename.includes("Google Chat/Groups/")) {
+            topFolder = entry.filename.split("Google Chat/Groups/")[0];
+            break;
+          }
+        }
+        
+        // Process all media files
+        for (const entry of entries) {
+          if (/(jpe?g|png|gif|bmp|webp|mp4|webm|mov|ogg|mp3|wav)$/i.test(entry.filename) && !entry.filename.includes("/._")) {
+            try {
+              const blob = await entry.getData(new zip.BlobWriter());
+              const blobUrl = URL.createObjectURL(blob);
+              
+              // Use the filename as key
+              fileBlobs[entry.filename] = {
+                url: blobUrl,
+                mediaType: getMediaType(entry.filename),
+                original_name: entry.filename.split('/').pop()
+              };
+              
+              // Standalone media mapping
+              if (entry.filename.includes("Google Chat/Groups/")) {
+                const parts = entry.filename.split("/");
+                const groupIdIndex = parts.findIndex(part => part === "Groups") + 1;
+                if (groupIdIndex < parts.length) {
+                  const groupId = parts[groupIdIndex];
+                  if (!mediaMap[groupId]) mediaMap[groupId] = [];
+                  
+                  const ts = parseMediaTimestamp(entry.filename);
+                  if (ts) {
+                    mediaMap[groupId].push({
+                      type: "media",
+                      mediaType: getMediaType(entry.filename),
+                      timestamp: ts,
+                      url: blobUrl,
+                      filename: entry.filename
+                    });
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(`Error processing file ${entry.filename}:`, e);
+            }
+          }
+        }
+        
+        // Process messages.json files
+        for (const entry of entries) {
+          const match = entry.filename.match(/Google Chat\/Groups\/([^\/]+)\/messages\.json$/);
+          if (!match) continue;
+          
+          const threadId = match[1];
+          let groupName = threadId;
+          
+          // Try to get group name from group_info.json
+          const infoPath = `${topFolder}Google Chat/Groups/${threadId}/group_info.json`;
+          const infoEntry = entries.find(e => e.filename === infoPath);
+          if (infoEntry) {
+            try {
+              const infoText = await infoEntry.getData(new zip.TextWriter());
+              const infoJson = JSON.parse(infoText);
+              groupName = infoJson.name || threadId;
+            } catch (e) {
+              console.error(`Error processing group info for ${threadId}:`, e);
+            }
+          }
+          
+          // Process messages
+          try {
+            const text = await entry.getData(new zip.TextWriter());
+            const data = JSON.parse(text);
+            
+            if (!data.messages || !Array.isArray(data.messages)) {
+              console.warn(`No messages found in ${entry.filename}`);
+              continue;
+            }
+            
+            const msgs = data.messages.map(msg => {
+              const message = {
+                type: "message",
+                timestamp: new Date(msg.created_date || null),
+                sender: msg.creator?.name || "Unknown",
+                text: msg.text || "",
+                topic_id: msg.topic_id,
+                message_id: msg.message_id
+              };
+              
+              // Add attached files if present
+              if (msg.attached_files && msg.attached_files.length > 0) {
+                message.attached_files = msg.attached_files.map(file => {
+                  // Try to find the file in our fileBlobs
+                  const exportPath = `${topFolder}Google Chat/Groups/${threadId}/Files/${file.export_name}`;
+                  const fileData = fileBlobs[exportPath] || null;
+                  
+                  return {
+                    original_name: file.original_name,
+                    export_name: file.export_name,
+                    export_path: exportPath,
+                    mediaType: fileData ? fileData.mediaType : getMediaType(file.original_name),
+                    url: fileData ? fileData.url : null
+                  };
+                });
+              }
+              
+              return message;
+            });
+            
+            // Combine messages with stand-alone media if needed
+            const combined = msgs.concat(mediaMap[threadId] || []);
+            combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            conversations[groupName] = combined;
+            
+            // Add to the conversation list
+            const li = document.createElement('li');
+            li.textContent = groupName;
+            li.onclick = () => {
+              document.querySelectorAll('.convo-list li').forEach(item => item.classList.remove('active'));
+              li.classList.add('active');
+              showConversation(groupName);
+              currentConversation = groupName;
+            };
+            convoList.appendChild(li);
+          } catch (e) {
+            console.error(`Error processing ${entry.filename}:`, e);
+          }
+        }
+        
+        // Select first conversation if available
+        if (convoList.children.length > 0) {
+          convoList.children[0].click();
+        }
+        
+        await reader.close();
+      } catch (e) {
+        console.error("Error processing ZIP file:", e);
+        messagesDiv.innerHTML = `<div style="color:red;padding:20px;">Error processing file: ${e.message}</div>`;
+      } finally {
+        loadingIndicator.style.display = 'none';
+      }
+    });
+
+    function showConversation(name) {
+      messagesDiv.innerHTML = "";
+      const entries = conversations[name] || [];
+      
+      if (entries.length === 0) {
+        messagesDiv.innerHTML = "<div style='text-align:center;padding:20px;color:#666;'>No messages found</div>";
+        return;
+      }
+      
+      let lastDate = null;
+      
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const msgDate = new Date(entry.timestamp);
+        
+        // Add date separator if date changes
+        if (!lastDate || msgDate.toDateString() !== lastDate.toDateString()) {
+          const dateSeparator = document.createElement('div');
+          dateSeparator.className = 'date-separator';
+          dateSeparator.innerHTML = `<span class="date-separator-text">${formatDate(msgDate)}</span>`;
+          messagesDiv.appendChild(dateSeparator);
+          lastDate = msgDate;
+        }
+        
+        const div = document.createElement('div');
+        const senderClass = entry.sender ? getSenderClass(entry.sender) : 'sender-1';
+        div.className = `msg ${senderClass}`;
+        
+        if (entry.type === "message") {
+          // Create the message bubble
+          const msgBubble = document.createElement('div');
+          msgBubble.className = 'msg-bubble';
+          
+          // Add sender name if it exists
+          if (entry.sender) {
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'msg-sender';
+            senderDiv.textContent = entry.sender;
+            msgBubble.appendChild(senderDiv);
+          }
+          
+          // Add message text if it exists
+          if (entry.text) {
+            const textDiv = document.createElement('div');
+            textDiv.className = 'msg-text';
+            textDiv.innerHTML = entry.text.replace(/\n/g, '<br>');
+            msgBubble.appendChild(textDiv);
+          }
+          
+          // Add attached files if present
+          if (entry.attached_files && entry.attached_files.length > 0) {
+            const mediaContainer = document.createElement('div');
+            mediaContainer.className = 'media-container';
+            
+            for (const file of entry.attached_files) {
+              const mediaItem = document.createElement('div');
+              mediaItem.className = 'media-item';
+              
+              if (file.url) {
+                if (file.mediaType === 'image') {
+                  // Create image thumbnail
+                  const img = document.createElement('img');
+                  img.src = file.url;
+                  img.alt = file.original_name;
+                  img.title = file.original_name;
+                  img.onclick = () => {
+                    modal.classList.add('show');
+                    modalImg.src = file.url;
+                  };
+                  mediaItem.appendChild(img);
+                } else if (file.mediaType === 'video') {
+                  // Create video element
+                  const video = document.createElement('video');
+                  video.controls = true;
+                  video.src = file.url;
+                  video.title = file.original_name;
+                  mediaItem.appendChild(video);
+                } else if (file.mediaType === 'audio') {
+                  // Create audio element
+                  const audio = document.createElement('audio');
+                  audio.controls = true;
+                  audio.src = file.url;
+                  audio.title = file.original_name;
+                  mediaItem.appendChild(audio);
+                }
+                
+                // Add download link for all media types
+                const downloadLink = document.createElement('a');
+                downloadLink.href = file.url;
+                downloadLink.className = 'media-download';
+                downloadLink.download = file.original_name;
+                downloadLink.textContent = `Download ${file.original_name}`;
+                mediaItem.appendChild(downloadLink);
+              } else {
+                // If URL not available, just show filename
+                mediaItem.textContent = `[File: ${file.original_name}]`;
+              }
+              
+              mediaContainer.appendChild(mediaItem);
+            }
+            
+            msgBubble.appendChild(mediaContainer);
+          }
+          
+          // Add timestamp
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'msg-time';
+          timeDiv.textContent = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          msgBubble.appendChild(timeDiv);
+          
+          div.appendChild(msgBubble);
+        } else if (entry.type === "media") {
+          // Handle standalone media
+          const msgBubble = document.createElement('div');
+          msgBubble.className = 'msg-bubble';
+          
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'msg-time';
+          timeDiv.textContent = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
+          const mediaContainer = document.createElement('div');
+          mediaContainer.className = 'media-container';
+          
+          const mediaItem = document.createElement('div');
+          mediaItem.className = 'media-item';
+          
+          const filename = entry.filename.split('/').pop();
+          
+          if (entry.mediaType === 'image') {
+            const img = document.createElement('img');
+            img.src = entry.url;
+            img.alt = filename;
+            img.title = filename;
+            img.onclick = () => {
+              modal.classList.add('show');
+              modalImg.src = entry.url;
+            };
+            mediaItem.appendChild(img);
+          } else if (entry.mediaType === 'video') {
+            const video = document.createElement('video');
+            video.controls = true;
+            video.src = entry.url;
+            video.title = filename;
+            mediaItem.appendChild(video);
+          } else if (entry.mediaType === 'audio') {
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.src = entry.url;
+            audio.title = filename;
+            mediaItem.appendChild(audio);
+          }
+          
+          // Add download link
+          const downloadLink = document.createElement('a');
+          downloadLink.href = entry.url;
+          downloadLink.className = 'media-download';
+          downloadLink.download = filename;
+          downloadLink.textContent = `Download ${filename}`;
+          mediaItem.appendChild(downloadLink);
+          
+          mediaContainer.appendChild(mediaItem);
+          msgBubble.appendChild(mediaContainer);
+          msgBubble.appendChild(timeDiv);
+          div.appendChild(msgBubble);
+        }
+        
+        messagesDiv.appendChild(div);
+      }
+      
+      // Add a clearfix after all messages
+      const clearfix = document.createElement('div');
+      clearfix.className = 'clearfix';
+      messagesDiv.appendChild(clearfix);
+      
+      // Scroll to bottom
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    // Image modal functions
+    modalClose.onclick = () => {
+      modal.classList.remove('show');
+    };
+    
+    window.onclick = (event) => {
+      if (event.target === modal) {
+        modal.classList.remove('show');
+      }
+    };
+  </script>
+</body>
+</html>
