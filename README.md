@@ -1,6 +1,6 @@
 # Google Chat Takeout Viewer
 
-A standalone HTML viewer for Google Chat/Hangouts takeout exports.
+[A standalone HTML viewer for Google Chat/Hangouts takeout exports.](https://creedofman.github.io/google-chat-takeout-viewer/)
 
 ## Overview
 
