@@ -26,7 +26,7 @@ This tool allows you to view your Google Chat conversations from Google Takeout 
    - Create and download the export
 
 2. **Use the Viewer**:
-   - Download the `google-chat-takeout-viewer.html` file from this repository
+   - Download the `index.html` file from this repository
    - Open the HTML file in any modern web browser
    - Click "Select Takeout ZIP File" and choose your downloaded Takeout ZIP file
    - Browse your conversations in the left sidebar
